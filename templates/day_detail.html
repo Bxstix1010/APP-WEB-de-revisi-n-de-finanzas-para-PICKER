@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+{% block content %}
+
+<a href="{{ url_for('detalle_mes', month_id=dia.month_id) }}" 
+   class="btn btn-link btn-sm p-0 mb-2">← Volver al mes</a>
+
+<h4 class="mb-1">Día {{ dia.fecha }}</h4>
+
+<p class="text-muted small">
+  Racha: {{ dia.racha_inicio }} – {{ dia.racha_fin }} |
+  Bono racha: ${{ dia.bono_racha }}
+</p>
+
+<!-- BOTÓN CERRAR DÍA -->
+{% if not dia.cerrado %}
+<form action="{{ url_for('cerrar_dia', day_id=dia.id) }}" method="post" class="mb-2">
+  <button class="btn btn-danger btn-sm">Cerrar día</button>
+</form>
+{% else %}
+<div class="alert alert-secondary py-2 mb-2">
+  <strong>Día cerrado.</strong> Ya no puedes agregar pedidos ni modificar datos.
+</div>
+{% endif %}
+
+<!-- TOTAL SEMANAL -->
+<div class="alert alert-primary mt-3" role="alert">
+  <strong>Esta semana se generó:</strong>
+  ${{ "{:,.0f}".format(total_semana) }}
+</div>
+
+
+<!-- ===========================
+     RESUMEN DEL DÍA (ARRIBA)
+=========================== -->
+
+<hr>
+
+<h5 class="mt-3">Resumen del día</h5>
+
+<p><strong>Total pedidos:</strong> {{ dia.orders|length }}</p>
+<p><strong>Total SKU:</strong> {{ dia.total_sku }}</p>
+
+<p><strong>Racha seleccionada:</strong> {{ dia.racha_inicio }} – {{ dia.racha_fin }}</p>
+
+{% set horas_esperadas = (
+    ((dia.racha_fin.split(':')[0]|int) + (dia.racha_fin.split(':')[1]|int)/60)
+    -
+    ((dia.racha_inicio.split(':')[0]|int) + (dia.racha_inicio.split(':')[1]|int)/60)
+) %}
+
+<p><strong>Horas esperadas según racha:</strong> {{ horas_esperadas|float }}</p>
+<p><strong>Horas reales trabajadas:</strong> {{ dia.horas_reales }}</p>
+
+<p><strong>Total ganado (sin bono):</strong> 
+  ${{ "{:,.0f}".format(dia.total_pedidos) }}
+</p>
+
+<p><strong>Bono racha:</strong> ${{ dia.bono_racha }}</p>
+
+<h5 class="text-success mt-3">
+  <strong>Total final del día: ${{ "{:,.0f}".format(dia.total_dia) }}</strong>
+</h5>
+
+
+<!-- ===========================
+     META DIARIA
+=========================== -->
+
+<hr>
+
+<h5 class="mt-4">Meta diaria</h5>
+
+{% if not dia.cerrado %}
+<form action="{{ url_for('actualizar_meta', day_id=dia.id) }}" method="post" class="row g-2 mb-3">
+  <div class="col-6">
+    <label class="form-label small">Meta diaria ($)</label>
+    <input type="number" name="meta_diaria" class="form-control"
+           value="{{ dia.meta_diaria if dia.meta_diaria else '' }}" placeholder="Ej: 30000">
+  </div>
+
+  <div class="col-6">
+    <label class="form-label small">SKU estimado por pedido</label>
+    <input type="number" name="sku_estimado" class="form-control"
+           value="{{ dia.sku_estimado if dia.sku_estimado else '' }}" placeholder="Ej: 25">
+  </div>
+
+  <div class="col-12">
+    <button class="btn btn-warning w-100">Guardar meta diaria</button>
+  </div>
+</form>
+{% endif %}
+
+{% if dia.meta_diaria > 0 %}
+  {% set valor_estimado = 1350 + 65 * (dia.sku_estimado if dia.sku_estimado else 0) %}
+  {% set restante = dia.meta_diaria - dia.total_dia %}
+  {% set pedidos_faltantes = (restante / valor_estimado) | round(0, 'ceil') if valor_estimado > 0 else 0 %}
+
+  <p><strong>Meta del día:</strong> ${{ dia.meta_diaria }}</p>
+  <p><strong>SKU estimado:</strong> {{ dia.sku_estimado }}</p>
+  <p><strong>Valor estimado por pedido:</strong> ${{ valor_estimado }}</p>
+  <p><strong>Ingresado real hoy:</strong> ${{ dia.total_dia }}</p>
+
+  <p><strong>Restante:</strong> ${{ restante if restante > 0 else 0 }}</p>
+
+  {% if restante > 0 %}
+    <h5 class="text-primary">
+      Necesitas <strong>{{ pedidos_faltantes }}</strong> pedidos más para cumplir la meta.
+    </h5>
+  {% else %}
+    <h5 class="text-success">¡Meta cumplida! 🎉</h5>
+  {% endif %}
+{% else %}
+  <p class="text-muted">Sin meta definida.</p>
+{% endif %}
+
+
+<!-- ===========================
+     HORAS REALES
+=========================== -->
+
+<hr>
+<h5 class="mt-3">Actualizar horas reales trabajadas</h5>
+
+{% if not dia.cerrado %}
+<form action="{{ url_for('actualizar_horas', day_id=dia.id) }}" method="post" class="row g-2 mb-4">
+  <div class="col-6">
+    <label class="form-label small">Horas reales trabajadas</label>
+    <input type="number" step="0.25" name="horas_reales" class="form-control"
+           value="{{ dia.horas_reales }}">
+  </div>
+
+  <div class="col-6 d-flex align-items-end">
+    <button class="btn btn-success w-100">Actualizar</button>
+  </div>
+</form>
+{% else %}
+<p class="text-muted">El día está cerrado. No puedes modificar horas.</p>
+{% endif %}
+
+
+<!-- ===========================
+     AGREGAR PEDIDO NORMAL
+=========================== -->
+
+<hr>
+
+<h5 class="mt-3">Agregar pedido</h5>
+
+{% if not dia.cerrado %}
+<form action="{{ url_for('crear_pedido', day_id=dia.id) }}" method="post" class="row g-2 mb-4">
+
+  <div class="col-6">
+    <label class="form-label small">Tipo</label>
+    <select name="tipo" class="form-select">
+      <option value="normal">Normal</option>
+      <option value="bipicking">Bipicking</option>
+    </select>
+  </div>
+
+  <div class="col-6">
+    <label class="form-label small">SKU</label>
+    <input type="number" name="sku" class="form-control" min="1" required>
+  </div>
+
+  <div class="col-6">
+    <label class="form-label small">Especial</label>
+    <div class="form-check mt-2">
+      <input class="form-check-input" type="checkbox" name="especial">
+      <label class="form-check-label small">Sí</label>
+    </div>
+  </div>
+
+  <div class="col-6">
+    <label class="form-label small">Extra del pedido (si aplica)</label>
+    <input type="number" name="extra_especial" class="form-control" placeholder="Ej: 500">
+  </div>
+
+  <div class="col-12">
+    <button class="btn btn-primary w-100 mt-2">Registrar pedido</button>
+  </div>
+
+</form>
+{% else %}
+<p class="text-muted">El día está cerrado. No puedes agregar pedidos.</p>
+{% endif %}
+
+
+<!-- ===========================
+     LISTA DE PEDIDOS DEL DÍA
+=========================== -->
+
+<hr>
+
+<h5>Pedidos del día</h5>
+
+{% if dia.orders %}
+  <ul class="list-group mb-4">
+    {% for p in dia.orders %}
+      <li class="list-group-item d-flex justify-content-between align-items-center">
+        <div>
+          <strong>{{ p.tipo|capitalize }}</strong>
+          {% if p.especial %}
+            <span class="badge bg-warning text-dark ms-1">Especial</span>
+          {% endif %}
+          <div class="small text-muted">
+            SKU: {{ p.sku }} |
+            Total: ${{ "{:,.0f}".format(p.total_pedido) }}
+          </div>
+        </div>
+
+        {% if not dia.cerrado %}
+        <form action="{{ url_for('eliminar_pedido', order_id=p.id) }}" method="post"
+              onsubmit="return confirm('¿Eliminar este pedido?');">
+          <button class="btn btn-outline-danger btn-sm">X</button>
+        </form>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="text-muted text-center">No hay pedidos registrados todavía.</p>
+{% endif %}
+
+
+<!-- ===========================
+     BOTÓN FLOANTE (FAB)
+=========================== -->
+
+{% if not dia.cerrado %}
+<style>
+.fab {
+  position: fixed;
+  bottom: 25px;
+  right: 25px;
+  width: 60px;
+  height: 60px;
+  background: #007bff;
+  color: white;
+  border-radius: 50%;
+  font-size: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  z-index: 999;
+}
+.quick-panel {
+  position: fixed;
+  bottom: 100px;
+  right: 25px;
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  width: 250px;
+  display: none;
+  z-index: 999;
+}
+</style>
+
+<div class="fab" onclick="toggleQuick()">+</div>
+
+<div class="quick-panel" id="quick-panel">
+  <form action="{{ url_for('crear_pedido', day_id=dia.id) }}" method="post">
+
+    <label class="form-label small">Tipo</label>
+    <select name="tipo" class="form-select form-select-sm mb-2">
+      <option value="normal">Normal</option>
+      <option value="bipicking">Bipicking</option>
+    </select>
+
+    <label class="form-label small">SKU</label>
+    <input type="number" name="sku" class="form-control form-control-sm mb-2" required>
+
+    <!-- Checkbox Especial -->
+    <div class="form-check mb-2">
+      <input type="checkbox" name="especial" id="quick-especial" class="form-check-input" onchange="toggleQuickExtra()">
+      <label class="form-check-label small" for="quick-especial">Especial</label>
+    </div>
+
+    <!-- Campo Extra Especial (OCULTO AL INICIO) -->
+    <div id="quick-extra-field" style="display:none;">
+      <label class="form-label small">Extra del pedido</label>
+      <input type="number" name="extra_especial" class="form-control form-control-sm mb-2" placeholder="Ej: 500">
+    </div>
+
+    <button class="btn btn-primary btn-sm w-100">Agregar rápido</button>
+  </form>
+</div>
+
+<script>
+function toggleQuick(){
+  const panel = document.getElementById("quick-panel");
+  panel.style.display = (panel.style.display === "block") ? "none" : "block";
+}
+
+function toggleQuickExtra(){
+  const check = document.getElementById("quick-especial");
+  const field = document.getElementById("quick-extra-field");
+  field.style.display = check.checked ? "block" : "none";
+}
+</script>
+
+{% endif %}
+
+
+{% endblock %}

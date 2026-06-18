@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h4 class="mb-3 text-center">Meses registrados</h4>
+
+<!-- Formulario para crear un nuevo mes -->
+<form action="{{ url_for('crear_mes') }}" method="post" class="row g-2 mb-4">
+  <div class="col-8">
+    <input name="nombre" class="form-control" placeholder="Ej: Noviembre 2025">
+  </div>
+  <div class="col-4">
+    <button class="btn btn-primary w-100">Crear mes</button>
+  </div>
+</form>
+
+<!-- Lista de meses -->
+{% if meses %}
+  <ul class="list-group shadow-sm">
+
+    {% for mes in meses %}
+      <li class="list-group-item d-flex justify-content-between align-items-center">
+
+        <!-- Información del mes -->
+        <div>
+          <a href="{{ url_for('detalle_mes', month_id=mes.id) }}" 
+             class="fw-semibold text-decoration-none text-primary">
+            {{ mes.nombre }}
+          </a>
+
+          <div class="small text-muted">
+            Total acumulado: 
+            ${{ "{:,.0f}".format(mes.total_mes) }}
+          </div>
+        </div>
+
+        <!-- Botón eliminar -->
+        <form action="{{ url_for('eliminar_mes', month_id=mes.id) }}" method="post" 
+              onsubmit="return confirm('¿Eliminar este mes y todos sus días y pedidos?');">
+          <button class="btn btn-outline-danger btn-sm">Eliminar</button>
+        </form>
+
+      </li>
+    {% endfor %}
+
+  </ul>
+
+{% else %}
+  <p class="text-center text-muted mt-4">No se han creado meses todavía.</p>
+{% endif %}
+
+{% endblock %}

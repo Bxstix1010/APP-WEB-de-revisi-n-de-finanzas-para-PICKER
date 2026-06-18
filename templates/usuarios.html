@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3>Administración de usuarios</h3>
+<p class="text-muted">Solo administradores pueden ver esta página.</p>
+
+<table class="table table-striped mt-3">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Nombre</th>
+      <th>Email</th>
+      <th>Rol</th>
+      <th>Acciones</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {% for u in usuarios %}
+    <tr>
+      <td>{{ u.id }}</td>
+      <td>{{ u.nombre }}</td>
+      <td>{{ u.email }}</td>
+      <td>{{ u.rol }}</td>
+
+      <td>
+        {% if current_user.id != u.id %}
+        <form action="{{ url_for('admin_eliminar_usuario', user_id=u.id) }}" method="post"
+              onsubmit="return confirm('¿Eliminar este usuario? Toda su información se perderá.');">
+          <button class="btn btn-danger btn-sm">Eliminar</button>
+        </form>
+        {% else %}
+        <span class="text-muted small">No disponible</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<a href="{{ url_for('listar_meses') }}" class="btn btn-secondary mt-3">Volver</a>
+
+{% endblock %}
