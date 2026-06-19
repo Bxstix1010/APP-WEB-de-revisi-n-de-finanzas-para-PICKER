@@ -1,16 +1,14 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import useAuthStore from './context/authStore'
-
-// Pages
+import AppLayout    from './components/AppLayout'
 import LoginPage    from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import DashboardPage from './pages/DashboardPage'
+import PlannerPage  from './pages/PlannerPage'
 import MonthPage    from './pages/MonthPage'
 import DayPage      from './pages/DayPage'
+import CompaniesPage from './pages/CompaniesPage'
 import SettingsPage from './pages/SettingsPage'
-
-// Layout
-import AppLayout from './components/AppLayout'
 
 function PrivateRoute({ children }) {
   const user = useAuthStore((s) => s.user)
@@ -19,23 +17,21 @@ function PrivateRoute({ children }) {
 
 export default function App() {
   return (
-    <div className="dark">
-      <BrowserRouter>
-        <Routes>
-          {/* Públicas */}
-          <Route path="/login"    element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login"    element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
 
-          {/* Privadas con layout */}
-          <Route path="/" element={<PrivateRoute><AppLayout /></PrivateRoute>}>
-            <Route index                        element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard"             element={<DashboardPage />} />
-            <Route path="months/:monthId"       element={<MonthPage />} />
-            <Route path="days/:dayId"           element={<DayPage />} />
-            <Route path="settings"              element={<SettingsPage />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </div>
+        <Route path="/" element={<PrivateRoute><AppLayout /></PrivateRoute>}>
+          <Route index                     element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard"          element={<DashboardPage />} />
+          <Route path="planner/:dayId"     element={<PlannerPage />} />
+          <Route path="months/:monthId"    element={<MonthPage />} />
+          <Route path="days/:dayId"        element={<DayPage />} />
+          <Route path="companies"          element={<CompaniesPage />} />
+          <Route path="settings"           element={<SettingsPage />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   )
 }
