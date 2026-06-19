@@ -1,11 +1,13 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './src/**/*.{js,jsx}'],
+  content: [
+    './index.html',
+    './src/**/*.{js,jsx,ts,tsx}',
+  ],
   darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        // Paleta principal — verde picker
         brand: {
           50:  '#f0fdf4',
           100: '#dcfce7',
@@ -14,7 +16,6 @@ export default {
           600: '#16a34a',
           700: '#15803d',
         },
-        // Fondo dark
         surface: {
           900: '#0f172a',
           800: '#1e293b',
