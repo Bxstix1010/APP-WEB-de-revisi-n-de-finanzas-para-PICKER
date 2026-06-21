@@ -24,7 +24,14 @@ class ProductionConfig(BaseConfig):
     SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL", "").replace(
         "postgres://", "postgresql://"  # SQLAlchemy requiere postgresql://
     )
-    CORS_ORIGINS = os.environ.get("FRONTEND_URL", "").split(",")
+
+    # Dominio estable definido manualmente (ej: https://app-picker-fawn.vercel.app)
+    _frontend_url = os.environ.get("FRONTEND_URL", "").strip().rstrip("/")
+    CORS_ORIGINS = [_frontend_url] if _frontend_url else []
+
+    # Además, acepta cualquier preview deploy de Vercel del mismo proyecto
+    # (URLs con hash aleatorio tipo app-picker-xyz123.vercel.app)
+    CORS_ORIGIN_REGEX = r"^https://app-picker-.*\.vercel\.app$"
 
 
 config = {
