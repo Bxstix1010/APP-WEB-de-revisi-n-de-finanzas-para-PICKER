@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, Building2, Trash2, Settings2 } from 'lucide-react'
 import { companiesAPI, monthsAPI } from '../api'
 import ConfirmModal from '../components/ConfirmModal'
+import useAuthStore from '../context/authStore'
 
 /**
  * Input numérico controlado como STRING — evita que un 0 inicial
@@ -38,6 +39,7 @@ function NumberField({ value, onChange, placeholder, className = '' }) {
 
 export function CompaniesPage() {
   const navigate = useNavigate()
+  const { profileId } = useAuthStore()
   const [companies, setCompanies] = useState([])
   const [loading, setLoading]     = useState(true)
   const [showForm, setShowForm]   = useState(false)
@@ -53,17 +55,18 @@ export function CompaniesPage() {
   const [companyToDelete, setCompanyToDelete] = useState(null)
 
   const load = async () => {
-    const { data } = await companiesAPI.list(1)
+    if (!profileId) return
+    const { data } = await companiesAPI.list(profileId)
     setCompanies(data)
   }
 
-  useEffect(() => { load().finally(() => setLoading(false)) }, [])
+  useEffect(() => { load().finally(() => setLoading(false)) }, [profileId])
 
   const handleCreate = async () => {
     if (!nombre.trim()) return
     setSaving(true)
     try {
-      await companiesAPI.create(1, {
+      await companiesAPI.create(profileId, {
         nombre,
         tarifa: {
           normal_por_pedido: normalPedido,

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import useAuthStore from './context/authStore'
 import AppLayout    from './components/AppLayout'
@@ -12,8 +13,30 @@ import EditTariffPage from './pages/EditTariffPage'
 import SettingsPage from './pages/SettingsPage'
 
 function PrivateRoute({ children }) {
-  const user = useAuthStore((s) => s.user)
-  return user ? children : <Navigate to="/login" replace />
+  const { user, profileId, loadProfile } = useAuthStore()
+  const [checking, setChecking] = useState(!profileId)
+
+  useEffect(() => {
+    // Si hay sesión pero falta profileId (ej: sesiones iniciadas antes
+    // de que existiera este campo), lo cargamos una vez al entrar.
+    if (user && !profileId) {
+      loadProfile().finally(() => setChecking(false))
+    } else {
+      setChecking(false)
+    }
+  }, [user, profileId])
+
+  if (!user) return <Navigate to="/login" replace />
+
+  if (checking) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="w-7 h-7 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  return children
 }
 
 export default function App() {

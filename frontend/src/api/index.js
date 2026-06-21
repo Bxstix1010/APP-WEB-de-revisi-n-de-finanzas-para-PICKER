@@ -9,6 +9,11 @@ export const authAPI = {
   refresh:  ()        => api.post('/auth/refresh'),
 }
 
+// ── Profiles ──────────────────────────────────────────────────────
+export const profilesAPI = {
+  me: () => api.get('/profiles/me'),
+}
+
 // ── Companies ─────────────────────────────────────────────────────
 export const companiesAPI = {
   list:           (profileId)          => api.get(`/companies/profile/${profileId}`),

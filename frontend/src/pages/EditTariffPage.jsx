@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Check, Info } from 'lucide-react'
 import { companiesAPI } from '../api'
+import useAuthStore from '../context/authStore'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -39,6 +40,7 @@ function NumberField({ value, onChange, placeholder, className = '' }) {
 export default function EditTariffPage() {
   const { companyId } = useParams()
   const navigate       = useNavigate()
+  const { profileId }  = useAuthStore()
 
   const [company,  setCompany]  = useState(null)
   const [loading,  setLoading]  = useState(true)
@@ -52,11 +54,12 @@ export default function EditTariffPage() {
 
   useEffect(() => {
     async function load() {
+      if (!profileId) return
       try {
         // No hay un GET individual de empresa, así que filtramos de la lista
         // del perfil — funciona igual de bien ya que companies suele ser una
         // lista corta.
-        const { data: companies } = await companiesAPI.list(1)
+        const { data: companies } = await companiesAPI.list(profileId)
         const c = companies.find(x => x.id === Number(companyId))
         if (!c) { setError('Empresa no encontrada'); return }
         setCompany(c)
@@ -75,7 +78,7 @@ export default function EditTariffPage() {
       }
     }
     load()
-  }, [companyId])
+  }, [companyId, profileId])
 
   const handleGuardar = async () => {
     setSaving(true)

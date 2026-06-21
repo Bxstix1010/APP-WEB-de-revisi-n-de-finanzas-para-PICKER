@@ -27,7 +27,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuthStore()
+  const { user, profileId } = useAuthStore()
   const navigate = useNavigate()
 
   const [profiles,    setProfiles]    = useState([])
@@ -44,11 +44,7 @@ export default function DashboardPage() {
   useEffect(() => {
     async function load() {
       try {
-        // Por ahora usamos el primer perfil (Fase 4 expandirá esto)
-        const { data: me } = await import('../api').then(m => m.authAPI.me())
-        // Obtenemos perfiles del usuario desde companies listando por perfil 1
-        // TODO: endpoint de perfiles
-        const profileId = 1
+        if (!profileId) { setLoading(false); return }
         const { data: comps } = await companiesAPI.list(profileId)
         setCompanies(comps)
 
@@ -75,7 +71,7 @@ export default function DashboardPage() {
       }
     }
     load()
-  }, [])
+  }, [profileId])
 
   if (loading) {
     return (
