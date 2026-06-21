@@ -20,6 +20,19 @@ def listar_meses(company_id):
     return jsonify([m.to_dict() for m in meses])
 
 
+# ── Detalle de un mes ───────────────────────────────────────────────
+
+@months_bp.get("/<int:month_id>")
+@jwt_required()
+def detalle_mes(month_id):
+    user_id = int(get_jwt_identity())
+    mes     = Month.query.get_or_404(month_id)
+    if mes.company.profile.user_id != user_id:
+        return jsonify({"error": "Sin acceso"}), 403
+
+    return jsonify(mes.to_dict())
+
+
 # ── Crear mes ─────────────────────────────────────────────────────
 
 @months_bp.post("/company/<int:company_id>")

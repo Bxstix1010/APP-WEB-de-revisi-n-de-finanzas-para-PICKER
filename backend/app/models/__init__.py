@@ -246,10 +246,15 @@ class Day(db.Model):
         return round(min(self.total_dia / self.meta_diaria * 100, 100), 1)
 
     def to_dict(self, include_orders=False):
+        company = self.month.company
+        tariff  = company.tariff_activa()
+
         data = {
             "id":           self.id,
             "fecha":        self.fecha.isoformat(),
             "month_id":     self.month_id,
+            "company_id":   company.id,
+            "tariff_activa": tariff.to_dict() if tariff else None,
             "racha_inicio": self.racha_inicio,
             "racha_fin":    self.racha_fin,
             "bono_racha":   self.bono_racha,

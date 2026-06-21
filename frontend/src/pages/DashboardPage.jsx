@@ -120,6 +120,35 @@ export default function DashboardPage() {
   const totalMes    = resumen.total_mes     || 0
   const pctMes      = resumen.progreso_pct  || 0
 
+  // Progreso de la racha — compara hora actual contra el rango definido.
+  // No es un reloj en vivo, solo un cálculo que se actualiza al cargar/recargar el Dashboard.
+  const calcularProgresoRacha = () => {
+    if (!todayDay?.racha_inicio || !todayDay?.racha_fin) return null
+
+    const ahora = new Date()
+    const minAhora = ahora.getHours() * 60 + ahora.getMinutes()
+
+    const [h1, m1] = todayDay.racha_inicio.split(':').map(Number)
+    const [h2, m2] = todayDay.racha_fin.split(':').map(Number)
+    const minInicio = h1 * 60 + m1
+    const minFin    = h2 * 60 + m2
+    const duracionTotal = Math.max(1, minFin - minInicio)
+
+    let transcurridos, estado
+    if (minAhora < minInicio)      { transcurridos = 0;              estado = 'pendiente' }
+    else if (minAhora > minFin)    { transcurridos = duracionTotal;  estado = 'finalizada' }
+    else                            { transcurridos = minAhora - minInicio; estado = 'en curso' }
+
+    return {
+      pct: Math.round((transcurridos / duracionTotal) * 100),
+      horasTranscurridas: (transcurridos / 60).toFixed(1),
+      horasTotales: (duracionTotal / 60).toFixed(1),
+      estado,
+    }
+  }
+
+  const racha = calcularProgresoRacha()
+
   return (
     <div className="flex flex-col gap-4 pb-4">
 
@@ -203,6 +232,22 @@ export default function DashboardPage() {
               ? `${todayDay.racha_inicio} — ${todayDay.racha_fin}`
               : 'Sin racha registrada'}
           </p>
+
+          {racha && (
+            <div className="mt-1.5">
+              <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-sky-400 rounded-full transition-all"
+                  style={{ width: `${racha.pct}%` }}
+                />
+              </div>
+              <p className="text-xs text-sky-500 mt-1">
+                {racha.estado === 'pendiente' && 'Aún no empieza'}
+                {racha.estado === 'en curso'   && `Llevas ${racha.horasTranscurridas}h de ${racha.horasTotales}h`}
+                {racha.estado === 'finalizada' && `Racha completa · ${racha.horasTotales}h`}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

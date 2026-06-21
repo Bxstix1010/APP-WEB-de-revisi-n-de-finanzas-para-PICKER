@@ -1,21 +1,56 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Zap, Clock, Calculator } from 'lucide-react'
-import { daysAPI, companiesAPI } from '../api'
+import { daysAPI } from '../api'
 
 const CLP = (n) =>
   new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(n || 0)
+
+/**
+ * Input numérico controlado como STRING para evitar el bug de
+ * "el 0 inicial no se borra al escribir". El valor numérico real
+ * se calcula al vuelo con Number(), nunca se guarda un 0 fantasma.
+ */
+function NumberField({ value, onChange, placeholder, prefix, className = '' }) {
+  const [raw, setRaw] = useState(value === 0 ? '' : String(value))
+
+  useEffect(() => {
+    setRaw(value === 0 ? '' : String(value))
+  }, [value])
+
+  const handleChange = (e) => {
+    let v = e.target.value
+    v = v.replace(/[^\d]/g, '')
+    if (v.length > 1) v = v.replace(/^0+/, '')
+    setRaw(v)
+    onChange(v === '' ? 0 : Number(v))
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      {prefix && <span className="text-slate-500 text-sm">{prefix}</span>}
+      <input
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        value={raw}
+        onChange={handleChange}
+        placeholder={placeholder}
+        className={`input ${className}`}
+      />
+    </div>
+  )
+}
 
 export default function PlannerPage() {
   const { dayId } = useParams()
   const navigate  = useNavigate()
 
-  const [day,      setDay]      = useState(null)
-  const [tariff,   setTariff]   = useState(null)
-  const [loading,  setLoading]  = useState(true)
-  const [saving,   setSaving]   = useState(false)
+  const [day,     setDay]     = useState(null)
+  const [tariff,  setTariff]  = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [saving,  setSaving]  = useState(false)
 
-  // Inputs del planificador
   const [tipo,        setTipo]        = useState('normal')
   const [skuPromedio, setSkuPromedio] = useState(12)
   const [metaDia,     setMetaDia]     = useState(32000)
@@ -28,19 +63,14 @@ export default function PlannerPage() {
       try {
         const { data: d } = await daysAPI.get(dayId)
         setDay(d)
-        // Pre-llenar con datos existentes
         if (d.meta_diaria)  setMetaDia(d.meta_diaria)
         if (d.racha_inicio) setRachaInicio(d.racha_inicio)
         if (d.racha_fin)    setRachaFin(d.racha_fin)
         if (d.bono_racha)   setBonoRacha(d.bono_racha)
 
-        // Cargar tarifa de la empresa
-        const companyId = d.company_id
-        if (companyId) {
-          const { data: c } = await companiesAPI.list(1) // TODO: perfil dinámico
-          const comp = c.find(x => x.id === companyId)
-          if (comp?.tariff_activa) setTariff(comp.tariff_activa)
-        }
+        // El backend ahora incluye la tarifa vigente de la empresa
+        // directamente en el detalle del día — un solo round-trip.
+        if (d.tariff_activa) setTariff(d.tariff_activa)
       } catch (e) {
         console.error(e)
       } finally {
@@ -50,21 +80,19 @@ export default function PlannerPage() {
     load()
   }, [dayId])
 
-  // ── Cálculos en tiempo real ─────────────────────────────────────
-  const valorPorPedido = () => {
-    if (!tariff) return 0
-    if (tipo === 'normal')    return tariff.normal_por_pedido + tariff.normal_por_sku * skuPromedio
-    if (tipo === 'bipicking') return tariff.bip_por_pedido   + tariff.bip_por_sku   * skuPromedio
-    return 0
-  }
+  // ── Lógica: Pedido = fijo_por_tipo + (SKU × valor_sku) ──────────
+  // El fijo NUNCA cambia. Lo único variable pedido a pedido es el SKU.
 
-  const restanteSinBono = Math.max(0, metaDia - bonoRacha)
-  const vpp             = valorPorPedido()
-  const pedidosNecesarios = vpp > 0 ? Math.ceil(restanteSinBono / vpp) : 0
-  const pedidosConMargen  = pedidosNecesarios + 1
-  const estimadoConMargen = pedidosConMargen * vpp + bonoRacha
+  const fijoPorTipo  = () => !tariff ? 0 : (tipo === 'normal' ? tariff.normal_por_pedido : tariff.bip_por_pedido)
+  const valorPorSku  = () => !tariff ? 0 : (tipo === 'normal' ? tariff.normal_por_sku    : tariff.bip_por_sku)
+  const valorPorPedido = () => fijoPorTipo() + valorPorSku() * skuPromedio
 
-  // Horas trabajadas desde racha
+  const restanteSinBono   = Math.max(0, metaDia - bonoRacha)
+  const vpp                = valorPorPedido()
+  const pedidosNecesarios  = vpp > 0 ? Math.ceil(restanteSinBono / vpp) : 0
+  const pedidosConMargen   = pedidosNecesarios > 0 ? pedidosNecesarios + 1 : 0
+  const estimadoConMargen  = pedidosConMargen * vpp + bonoRacha
+
   const horasDesdeRacha = () => {
     try {
       const [h1, m1] = rachaInicio.split(':').map(Number)
@@ -74,7 +102,6 @@ export default function PlannerPage() {
   }
   const horas = horasDesdeRacha()
 
-  // Guardar planificación en el día
   const handleGuardar = async () => {
     setSaving(true)
     try {
@@ -102,7 +129,6 @@ export default function PlannerPage() {
   return (
     <div className="flex flex-col gap-4 pb-4">
 
-      {/* Header */}
       <div className="flex items-center gap-3">
         <button onClick={() => navigate(-1)} className="text-slate-400 hover:text-white p-1">
           <ArrowLeft size={20} />
@@ -141,22 +167,41 @@ export default function PlannerPage() {
         <p className="section-label">Tipo de pedido</p>
         <div className="grid grid-cols-2 gap-2">
           {[
-            { id: 'normal',    label: 'Normal',    sub: tariff ? `${CLP(tariff.normal_por_pedido)} + ${tariff.normal_por_sku}/SKU` : '—' },
-            { id: 'bipicking', label: 'Bipicking',  sub: tariff ? `${CLP(tariff.bip_por_pedido)} + ${tariff.bip_por_sku}/SKU` : '—' },
-          ].map(({ id, label, sub }) => (
+            { id: 'normal',    label: 'Normal',    fijo: tariff?.normal_por_pedido, sku: tariff?.normal_por_sku },
+            { id: 'bipicking', label: 'Bipicking', fijo: tariff?.bip_por_pedido,    sku: tariff?.bip_por_sku    },
+          ].map(({ id, label, fijo, sku }) => (
             <button
               key={id}
               onClick={() => setTipo(id)}
               className={`card text-left transition-all ${
-                tipo === id
-                  ? 'border-emerald-400/60 bg-emerald-950'
-                  : 'hover:border-slate-600'
+                tipo === id ? 'border-emerald-400/60 bg-emerald-950' : 'hover:border-slate-600'
               }`}
             >
-              <p className={`text-sm font-medium ${tipo === id ? 'text-emerald-400' : 'text-slate-200'}`}>{label}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{sub}</p>
+              <p className={`text-sm font-medium ${tipo === id ? 'text-emerald-400' : 'text-slate-200'}`}>
+                {label}
+              </p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {tariff ? `${CLP(fijo)} fijo + ${CLP(sku)}/SKU` : '—'}
+              </p>
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* DESGLOSE — fijo vs variable */}
+      <div className="card">
+        <p className="section-label">¿Cómo se calcula tu pedido?</p>
+        <div className="flex items-center justify-between text-xs py-1.5">
+          <span className="text-slate-500">Valor fijo ({tipo})</span>
+          <span className="text-slate-300 font-medium">{CLP(fijoPorTipo())}</span>
+        </div>
+        <div className="flex items-center justify-between text-xs py-1.5 border-t border-slate-700/50">
+          <span className="text-slate-500">+ SKU × {CLP(valorPorSku())}</span>
+          <span className="text-slate-300 font-medium">{skuPromedio} × {CLP(valorPorSku())} = {CLP(valorPorSku() * skuPromedio)}</span>
+        </div>
+        <div className="flex items-center justify-between text-sm py-2 border-t border-slate-700 mt-1">
+          <span className="text-slate-300 font-medium">Total por pedido</span>
+          <span className="text-emerald-400 font-semibold">{CLP(vpp)}</span>
         </div>
       </div>
 
@@ -169,7 +214,7 @@ export default function PlannerPage() {
               onClick={() => setSkuPromedio(Math.max(1, skuPromedio - 1))}
               className="bg-slate-900 text-slate-300 w-10 h-10 text-lg hover:bg-slate-800 transition-colors"
             >−</button>
-            <div className="bg-slate-900 border-x border-slate-700 w-12 h-10 flex items-center justify-center
+            <div className="bg-slate-900 border-x border-slate-700 w-14 h-10 flex items-center justify-center
                             text-slate-100 font-medium text-sm">
               {skuPromedio}
             </div>
@@ -179,7 +224,7 @@ export default function PlannerPage() {
             >+</button>
           </div>
           <p className="text-xs text-slate-500">
-            Valor por pedido: <span className="text-emerald-400 font-medium">{CLP(vpp)}</span>
+            Ajusta según tu promedio real de productos por pedido
           </p>
         </div>
       </div>
@@ -187,21 +232,18 @@ export default function PlannerPage() {
       {/* META DEL DÍA */}
       <div className="card">
         <p className="section-label">¿Cuánto quieres ganar hoy?</p>
-        <div className="flex items-center gap-2">
-          <span className="text-slate-500 text-sm">$</span>
-          <input
-            type="number"
-            value={metaDia}
-            onChange={(e) => setMetaDia(Number(e.target.value))}
-            className="input"
-            placeholder="32000"
-          />
-        </div>
+        <NumberField
+          value={metaDia}
+          onChange={setMetaDia}
+          prefix="$"
+          placeholder="32000"
+          className="text-lg font-medium"
+        />
         <p className="text-xs text-slate-500 mt-2">
           Necesitas{' '}
           <span className="text-violet-400 font-medium">{pedidosNecesarios} pedidos</span>
-          {' '}con {skuPromedio} SKU promedio
-          {bonoRacha > 0 && ` (ya incluye bono de ${CLP(bonoRacha)})`}
+          {' '}con {skuPromedio} SKU promedio cada uno
+          {bonoRacha > 0 && <> (ya descontado el bono de {CLP(bonoRacha)})</>}
         </p>
       </div>
 
@@ -236,14 +278,15 @@ export default function PlannerPage() {
             <div className="flex items-center gap-2 text-xs text-sky-400">
               <Zap size={13} /> Bono racha
             </div>
-            <input
-              type="number"
-              value={bonoRacha}
-              onChange={(e) => setBonoRacha(Number(e.target.value))}
-              className="bg-transparent text-sky-400 font-medium text-sm text-right w-28
-                         focus:outline-none border-b border-sky-700 pb-0.5"
-              placeholder="0"
-            />
+            <div className="w-28">
+              <NumberField
+                value={bonoRacha}
+                onChange={setBonoRacha}
+                placeholder="0"
+                className="!bg-transparent !border-0 !border-b !border-sky-700 !rounded-none
+                           text-sky-400 font-medium text-sm text-right !py-0.5 !px-0"
+              />
+            </div>
           </div>
 
           <div className="flex items-center justify-between text-xs">
@@ -253,27 +296,26 @@ export default function PlannerPage() {
         </div>
       </div>
 
-      {/* DESGLOSE */}
+      {/* DESGLOSE FINAL */}
       <div className="bg-violet-950 border border-violet-800/30 rounded-2xl p-4">
         <p className="text-xs text-violet-400 flex items-center gap-1.5 mb-3">
           <Calculator size={13} /> Desglose para llegar a la meta
         </p>
         {[
-          { label: 'Meta diaria',             val: CLP(metaDia),               color: 'text-slate-200' },
-          { label: 'Bono racha incluido',      val: `− ${CLP(bonoRacha)}`,      color: 'text-sky-400'  },
-          { label: 'Restante por pedidos',     val: CLP(restanteSinBono),        color: 'text-slate-200' },
-          { label: `Valor por pedido (${skuPromedio} SKU)`, val: CLP(vpp),      color: 'text-slate-200' },
-          { label: 'Pedidos mínimos',          val: `${pedidosNecesarios} pedidos`, color: 'text-violet-300 font-medium' },
-          { label: 'Con margen de seguridad',  val: `${pedidosConMargen} pedidos`,  color: 'text-violet-300 font-semibold' },
+          { label: 'Meta diaria',                                  val: CLP(metaDia),                  color: 'text-slate-200' },
+          { label: 'Bono racha incluido',                           val: `− ${CLP(bonoRacha)}`,          color: 'text-sky-400'  },
+          { label: 'Restante por cubrir con pedidos',               val: CLP(restanteSinBono),           color: 'text-slate-200' },
+          { label: `Valor por pedido (fijo + ${skuPromedio} SKU)`,  val: CLP(vpp),                       color: 'text-slate-200' },
+          { label: 'Pedidos mínimos para llegar exacto',            val: `${pedidosNecesarios} pedidos`, color: 'text-violet-300 font-medium' },
+          { label: 'Recomendado (con margen)',                      val: `${pedidosConMargen} pedidos`,  color: 'text-violet-300 font-semibold' },
         ].map(({ label, val, color }) => (
-          <div key={label} className="flex justify-between items-center py-2 border-b border-violet-900/50 last:border-0 text-xs">
+          <div key={label} className="flex justify-between items-center py-2 border-b border-violet-900/50 last:border-0 text-xs gap-3">
             <span className="text-slate-500">{label}</span>
-            <span className={color}>{val}</span>
+            <span className={`${color} text-right whitespace-nowrap`}>{val}</span>
           </div>
         ))}
       </div>
 
-      {/* GUARDAR */}
       <button onClick={handleGuardar} disabled={saving} className="btn-primary">
         {saving ? 'Guardando...' : 'Guardar planificación del día'}
       </button>

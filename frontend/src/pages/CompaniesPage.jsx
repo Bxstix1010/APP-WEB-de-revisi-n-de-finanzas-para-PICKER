@@ -1,8 +1,40 @@
 // CompaniesPage.jsx
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Building2, ChevronRight } from 'lucide-react'
+import { Plus, Building2, Trash2 } from 'lucide-react'
 import { companiesAPI, monthsAPI } from '../api'
+import ConfirmModal from '../components/ConfirmModal'
+
+/**
+ * Input numérico controlado como STRING — evita que un 0 inicial
+ * bloquee la escritura de nuevos dígitos.
+ */
+function NumberField({ value, onChange, placeholder, className = '' }) {
+  const [raw, setRaw] = useState(value === 0 ? '' : String(value))
+
+  useEffect(() => {
+    setRaw(value === 0 ? '' : String(value))
+  }, [value])
+
+  const handleChange = (e) => {
+    let v = e.target.value.replace(/[^\d]/g, '')
+    if (v.length > 1) v = v.replace(/^0+/, '')
+    setRaw(v)
+    onChange(v === '' ? 0 : Number(v))
+  }
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      value={raw}
+      onChange={handleChange}
+      placeholder={placeholder}
+      className={`input ${className}`}
+    />
+  )
+}
 
 export function CompaniesPage() {
   const navigate = useNavigate()
@@ -17,6 +49,8 @@ export function CompaniesPage() {
   const [bipPedido,    setBipPedido]    = useState(1080)
   const [bipSku,       setBipSku]       = useState(52)
   const [saving, setSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
+  const [companyToDelete, setCompanyToDelete] = useState(null)
 
   const load = async () => {
     const { data } = await companiesAPI.list(1)
@@ -45,6 +79,22 @@ export function CompaniesPage() {
       alert(e.response?.data?.error || 'Error al crear empresa')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleDelete = (company) => setCompanyToDelete(company)
+
+  const confirmDelete = async () => {
+    if (!companyToDelete) return
+    setDeletingId(companyToDelete.id)
+    try {
+      await companiesAPI.delete(companyToDelete.id)
+      await load()
+      setCompanyToDelete(null)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -83,8 +133,7 @@ export function CompaniesPage() {
             ].map(({ label, val, set }) => (
               <div key={label}>
                 <label className="text-xs text-slate-500 block mb-1">{label}</label>
-                <input className="input" type="number" value={val}
-                  onChange={e => set(Number(e.target.value))} />
+                <NumberField value={val} onChange={set} placeholder="0" />
               </div>
             ))}
           </div>
@@ -116,7 +165,13 @@ export function CompaniesPage() {
                     </p>
                   )}
                 </div>
-                <ChevronRight size={16} className="text-slate-600" />
+                <button
+                  onClick={() => handleDelete(c)}
+                  disabled={deletingId === c.id}
+                  className="text-slate-600 hover:text-red-400 transition-colors p-1 flex-shrink-0"
+                >
+                  <Trash2 size={16} />
+                </button>
               </div>
 
               {/* Meses de esta empresa */}
@@ -127,6 +182,20 @@ export function CompaniesPage() {
           ))}
         </div>
       )}
+
+      <ConfirmModal
+        open={!!companyToDelete}
+        title="Eliminar empresa"
+        message={
+          <>
+            Se eliminará <b className="text-slate-300">{companyToDelete?.nombre}</b> junto
+            con todos sus meses, días y pedidos registrados. Esta acción no se puede deshacer.
+          </>
+        }
+        loading={!!deletingId}
+        onCancel={() => setCompanyToDelete(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
   )
 }
@@ -136,7 +205,7 @@ function MesesEmpresa({ companyId }) {
   const [months, setMonths]     = useState([])
   const [showForm, setShowForm] = useState(false)
   const [nombre, setNombre]     = useState('')
-  const [meta, setMeta]         = useState(600000)
+  const [meta, setMeta]         = useState(0)
   const [saving, setSaving]     = useState(false)
 
   useEffect(() => {
@@ -144,12 +213,14 @@ function MesesEmpresa({ companyId }) {
   }, [companyId])
 
   const handleCreate = async () => {
+    if (!nombre.trim() || !meta) return
     setSaving(true)
     try {
       await monthsAPI.create(companyId, { nombre, meta_mensual: meta })
       const { data } = await monthsAPI.list(companyId)
       setMonths(data)
       setNombre('')
+      setMeta(0)
       setShowForm(false)
     } finally {
       setSaving(false)
@@ -169,9 +240,8 @@ function MesesEmpresa({ companyId }) {
         <div className="flex flex-col gap-2 mb-3">
           <input className="input text-xs" placeholder="Ej: Junio 2025"
             value={nombre} onChange={e => setNombre(e.target.value)} />
-          <input className="input text-xs" type="number" placeholder="Meta mensual"
-            value={meta} onChange={e => setMeta(Number(e.target.value))} />
-          <button onClick={handleCreate} disabled={saving} className="btn-primary py-2 text-xs">
+          <NumberField value={meta} onChange={setMeta} placeholder="Meta mensual, ej: 200000" className="text-xs" />
+          <button onClick={handleCreate} disabled={saving || !nombre.trim() || !meta} className="btn-primary py-2 text-xs">
             {saving ? 'Creando...' : 'Crear mes'}
           </button>
         </div>
