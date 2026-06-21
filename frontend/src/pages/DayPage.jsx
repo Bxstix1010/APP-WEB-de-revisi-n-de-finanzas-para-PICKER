@@ -4,11 +4,10 @@ import { ArrowLeft, Plus, Trash2, TrendingUp, Lock, LockOpen } from 'lucide-reac
 import { daysAPI, ordersAPI } from '../api'
 import GoalRing from '../components/charts/GoalRing'
 import ConfirmModal from '../components/ConfirmModal'
+import useAuthStore from '../context/authStore'
+import { CLP, calcularLiquido } from '../utils/money'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-
-const CLP = (n) =>
-  new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(n || 0)
 
 /**
  * Input numérico controlado como STRING — evita que un 0 inicial
@@ -44,6 +43,7 @@ function NumberField({ value, onChange, placeholder, className = '' }) {
 export default function DayPage() {
   const { dayId } = useParams()
   const navigate  = useNavigate()
+  const { user }  = useAuthStore()
 
   const [day,      setDay]      = useState(null)
   const [loading,  setLoading]  = useState(true)
@@ -190,8 +190,13 @@ export default function DayPage() {
       <div className="card flex items-center gap-4">
         <GoalRing pct={pct} color="#4ade80" size={72} />
         <div className="flex-1">
-          <p className="text-2xl font-semibold text-emerald-400">{CLP(day?.total_dia)}</p>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-2xl font-semibold text-emerald-400">
+            {CLP(calcularLiquido(day?.total_dia, user?.retencion_pct))}
+          </p>
+          <p className="text-xs text-slate-600">
+            bruto {CLP(day?.total_dia)} · −{user?.retencion_pct ?? 15.25}% boleta
+          </p>
+          <p className="text-xs text-slate-500 mt-1">
             Meta: {CLP(day?.meta_diaria)} · {pct}% completado
           </p>
           {day?.bono_racha > 0 && (

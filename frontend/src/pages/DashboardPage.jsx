@@ -10,10 +10,8 @@ import { es } from 'date-fns/locale'
 import GoalRing from '../components/charts/GoalRing'
 import { statsAPI, monthsAPI, companiesAPI, daysAPI } from '../api'
 import useAuthStore from '../context/authStore'
+import { CLP, calcularLiquido } from '../utils/money'
 import clsx from 'clsx'
-
-const CLP = (n) =>
-  new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(n)
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null
@@ -203,11 +201,29 @@ export default function DashboardPage() {
 
       {/* OBJETIVOS — 3 anillos */}
       <div className="card">
-        <p className="section-label">Objetivos</p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="section-label !mb-0">Objetivos (líquido)</p>
+          <span className="text-xs text-slate-600">−{user?.retencion_pct ?? 15.25}% boleta</span>
+        </div>
         <div className="grid grid-cols-3 gap-2">
-          <GoalRing pct={pctDia}    color="#4ade80" label="Hoy"    value={CLP(totalDia)}    sub={`/ ${CLP(metaDia)}`} />
-          <GoalRing pct={pctSemana} color="#38bdf8" label="Semana" value={CLP(totalSemana)} sub={`/ ${CLP(metaSemana)}`} />
-          <GoalRing pct={pctMes}    color="#a78bfa" label="Mes"    value={CLP(totalMes)}    sub={`/ ${CLP(metaMes)}`} />
+          <GoalRing
+            pct={pctDia} color="#4ade80" label="Hoy"
+            value={CLP(calcularLiquido(totalDia, user?.retencion_pct))}
+            valueSub={`bruto ${CLP(totalDia)}`}
+            sub={`/ ${CLP(metaDia)}`}
+          />
+          <GoalRing
+            pct={pctSemana} color="#38bdf8" label="Semana"
+            value={CLP(calcularLiquido(totalSemana, user?.retencion_pct))}
+            valueSub={`bruto ${CLP(totalSemana)}`}
+            sub={`/ ${CLP(metaSemana)}`}
+          />
+          <GoalRing
+            pct={pctMes} color="#a78bfa" label="Mes"
+            value={CLP(calcularLiquido(totalMes, user?.retencion_pct))}
+            valueSub={`bruto ${CLP(totalMes)}`}
+            sub={`/ ${CLP(metaMes)}`}
+          />
         </div>
       </div>
 

@@ -28,6 +28,11 @@ class User(db.Model):
     email         = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     rol           = db.Column(db.String(20), default="usuario")   # "usuario" | "admin"
+
+    # Porcentaje de retención de boleta de honorarios (Chile).
+    # Configurable porque el cronograma legal lo va subiendo cada año tributario.
+    retencion_pct = db.Column(db.Float, default=15.25)
+
     created_at    = db.Column(db.DateTime, default=datetime.utcnow)
 
     profiles = db.relationship(
@@ -36,11 +41,12 @@ class User(db.Model):
 
     def to_dict(self):
         return {
-            "id":         self.id,
-            "nombre":     self.nombre,
-            "email":      self.email,
-            "rol":        self.rol,
-            "created_at": self.created_at.isoformat(),
+            "id":            self.id,
+            "nombre":        self.nombre,
+            "email":         self.email,
+            "rol":           self.rol,
+            "retencion_pct": self.retencion_pct,
+            "created_at":    self.created_at.isoformat(),
         }
 
 

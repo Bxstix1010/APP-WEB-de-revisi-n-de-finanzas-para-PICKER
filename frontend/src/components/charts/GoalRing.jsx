@@ -1,12 +1,13 @@
 /**
  * GoalRing — Anillo circular de progreso SVG
  * Props:
- *   pct      (0-100)  porcentaje completado
- *   color    string   color del trazo (hex o tailwind arbitrary)
- *   size     number   tamaño en px (default 72)
- *   label    string   texto debajo del anillo
- *   value    string   texto grande dentro del anillo
- *   sub      string   texto pequeño debajo del value
+ *   pct       (0-100)  porcentaje completado
+ *   color     string   color del trazo (hex o tailwind arbitrary)
+ *   size      number   tamaño en px (default 72)
+ *   label     string   texto debajo del anillo
+ *   value     string   texto grande dentro del anillo
+ *   sub       string   texto pequeño debajo del value (dentro del anillo)
+ *   valueSub  string   texto chico debajo del value, fuera del anillo (ej: monto bruto)
  */
 export default function GoalRing({
   pct = 0,
@@ -15,6 +16,7 @@ export default function GoalRing({
   label = '',
   value = '',
   sub = '',
+  valueSub = '',
 }) {
   const r          = (size - 12) / 2   // radio dejando margen para el trazo
   const circ       = 2 * Math.PI * r
@@ -73,6 +75,7 @@ export default function GoalRing({
       {value && (
         <div className="text-center">
           <div className="text-xs font-medium text-slate-200">{value}</div>
+          {valueSub && <div className="text-[10px] text-slate-600 -mt-0.5">{valueSub}</div>}
           {label && <div className="text-xs text-slate-500 mt-0.5">{label}</div>}
         </div>
       )}

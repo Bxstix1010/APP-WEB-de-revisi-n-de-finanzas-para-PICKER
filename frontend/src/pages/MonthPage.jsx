@@ -6,13 +6,13 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import GoalRing from '../components/charts/GoalRing'
 import ConfirmModal from '../components/ConfirmModal'
-
-const CLP = (n) =>
-  new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(n || 0)
+import useAuthStore from '../context/authStore'
+import { CLP, calcularLiquido } from '../utils/money'
 
 export default function MonthPage() {
   const { monthId } = useParams()
   const navigate     = useNavigate()
+  const { user }     = useAuthStore()
 
   const [days,        setDays]        = useState([])
   const [resumen,     setResumen]     = useState(null)
@@ -92,8 +92,13 @@ export default function MonthPage() {
         <div className="card flex items-center gap-4">
           <GoalRing pct={resumen.progreso_pct} color="#a78bfa" size={76} />
           <div className="flex-1">
-            <p className="text-2xl font-semibold text-violet-400">{CLP(resumen.total_mes)}</p>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-2xl font-semibold text-violet-400">
+              {CLP(calcularLiquido(resumen.total_mes, user?.retencion_pct))}
+            </p>
+            <p className="text-xs text-slate-600">
+              bruto {CLP(resumen.total_mes)} · −{user?.retencion_pct ?? 15.25}% boleta
+            </p>
+            <p className="text-xs text-slate-500 mt-1">
               Meta: {CLP(resumen.meta_mensual)} · {resumen.dias_trabajados} días trabajados
             </p>
           </div>

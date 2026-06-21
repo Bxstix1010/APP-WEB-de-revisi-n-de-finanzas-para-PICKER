@@ -41,6 +41,18 @@ const useAuthStore = create((set) => ({
     set({ user: null })
   },
 
+  updateRetencion: async (pct) => {
+    try {
+      const { data } = await authAPI.updateMe({ retencion_pct: pct })
+      localStorage.setItem('user', JSON.stringify(data))
+      set({ user: data })
+      return true
+    } catch (err) {
+      set({ error: err.response?.data?.error || 'Error al actualizar' })
+      return false
+    }
+  },
+
   clearError: () => set({ error: null }),
 }))
 

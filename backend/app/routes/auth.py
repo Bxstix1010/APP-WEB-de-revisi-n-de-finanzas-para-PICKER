@@ -83,3 +83,23 @@ def me():
     user_id = int(get_jwt_identity())
     user    = User.query.get_or_404(user_id)
     return jsonify(user.to_dict())
+
+
+@auth_bp.patch("/me")
+@jwt_required()
+def actualizar_me():
+    user_id = int(get_jwt_identity())
+    user    = User.query.get_or_404(user_id)
+
+    data = request.get_json()
+    if "retencion_pct" in data:
+        pct = float(data["retencion_pct"])
+        if pct < 0 or pct > 100:
+            return jsonify({"error": "El porcentaje debe estar entre 0 y 100"}), 400
+        user.retencion_pct = pct
+
+    if "nombre" in data and data["nombre"].strip():
+        user.nombre = data["nombre"].strip()
+
+    db.session.commit()
+    return jsonify(user.to_dict())

@@ -1,7 +1,7 @@
 // CompaniesPage.jsx
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Building2, Trash2 } from 'lucide-react'
+import { Plus, Building2, Trash2, Settings2 } from 'lucide-react'
 import { companiesAPI, monthsAPI } from '../api'
 import ConfirmModal from '../components/ConfirmModal'
 
@@ -165,6 +165,12 @@ export function CompaniesPage() {
                     </p>
                   )}
                 </div>
+                <button
+                  onClick={() => navigate(`/companies/${c.id}/tariff`)}
+                  className="text-slate-600 hover:text-emerald-400 transition-colors p-1 flex-shrink-0"
+                >
+                  <Settings2 size={16} />
+                </button>
                 <button
                   onClick={() => handleDelete(c)}
                   disabled={deletingId === c.id}

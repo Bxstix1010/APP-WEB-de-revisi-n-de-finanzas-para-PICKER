@@ -8,6 +8,7 @@ import PlannerPage  from './pages/PlannerPage'
 import MonthPage    from './pages/MonthPage'
 import DayPage      from './pages/DayPage'
 import CompaniesPage from './pages/CompaniesPage'
+import EditTariffPage from './pages/EditTariffPage'
 import SettingsPage from './pages/SettingsPage'
 
 function PrivateRoute({ children }) {
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="months/:monthId"    element={<MonthPage />} />
           <Route path="days/:dayId"        element={<DayPage />} />
           <Route path="companies"          element={<CompaniesPage />} />
+          <Route path="companies/:companyId/tariff" element={<EditTariffPage />} />
           <Route path="settings"           element={<SettingsPage />} />
         </Route>
       </Routes>
