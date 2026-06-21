@@ -36,4 +36,9 @@ def create_app(config_name="development"):
     app.register_blueprint(orders_bp,    url_prefix="/api/orders")
     app.register_blueprint(stats_bp,     url_prefix="/api/stats")
 
+    # Crea las tablas si no existen. Se ejecuta siempre que la app arranca,
+    # sin importar si es vía `python run.py` (desarrollo) o gunicorn (producción/Railway).
+    with app.app_context():
+        db.create_all()
+
     return app
